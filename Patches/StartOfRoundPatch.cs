@@ -2,6 +2,7 @@
 using System.Linq;
 using HarmonyLib;
 using Newtonsoft.Json;
+using TerminalDesktopMod.Extentions;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
@@ -35,6 +36,11 @@ namespace TerminalDesktopMod
         [HarmonyPrefix]
         public static void Start(ref StartOfRound __instance)
         {
+            WalkieTalkie.allWalkieTalkies.Clear();
+            FlashDriveProp.FlashLoadedEvent = new UnityEvent<FlashDriveProp>();
+            UsbPort.UsbPortChangeEvent = new UnityEvent<UsbPort>();
+            DesktopStorage.ClearTerminalNodeEvent();            
+
             if (!__instance.IsServer)
                 return;
             string saveNum = GameNetworkManager.Instance.saveFileNum.ToString();
@@ -46,10 +52,6 @@ namespace TerminalDesktopMod
                 var load = JsonConvert.DeserializeObject<TerminalDesktopSaveModel>(json);
                 DesktopStorage.TerminalDesktopSaveModel = load;
             }
-
-            FlashDriveProp.FlashLoadedEvent = new UnityEvent<FlashDriveProp>();
-            UsbPort.UsbPortChangeEvent = new UnityEvent<UsbPort>();
-            DesktopStorage.ClearTerminalNodeEvent();            
             
             var canvas = GameObject.Instantiate(DesktopStorage.DesktopPrefab);
             var networkObj = canvas.GetComponent<NetworkObject>();

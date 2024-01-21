@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace TerminalDesktopMod
+namespace TerminalDesktopMod.Extentions
 {
     [Serializable]
     public class TerminalDesktopSaveModel
@@ -45,7 +44,10 @@ namespace TerminalDesktopMod
             foreach (var window in windows)
                 GameObject.Destroy(window.gameObject);
             desktopManager.DesktopWindows.Clear();
-            
+
+            WalkieTalkie.allWalkieTalkies.Remove(WalkieWindow.TerminalWalkieTalkie);
+            WalkieWindow.TerminalWalkieTalkie = null;
+
             if (!desktopManager.IsServer)
                 return;
             DesktopStorage.TerminalDesktopSaveModel = new TerminalDesktopSaveModel();

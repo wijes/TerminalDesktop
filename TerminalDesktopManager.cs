@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,13 +20,14 @@ namespace TerminalDesktopMod
         public List<DesktopWindowBase> DesktopWindows { get; set; } = new List<DesktopWindowBase>();
         public Dictionary<GameObject,DesktopWindowBase> CollapsedWindows { get; set; } = new Dictionary<GameObject,DesktopWindowBase>();
         public UnityEvent<DesktopWindowBase> WindowAddedEvent { get; set; } = new UnityEvent<DesktopWindowBase>();
+        public UnityEvent TerminalExitEvent { get; set; } = new UnityEvent();
         public Canvas CanvasDesktop { get; private set; }
-        public Camera EventUICamera { get; private set; }
         public bool IsUsingTerminal { get; private set; }
         private Terminal Terminal { get; set; }
         private NetworkVariable<int> UseEnergy { get; set; } = new NetworkVariable<int>();
         private NetworkVariable<int> MaxEnergy { get; set; } = new NetworkVariable<int>();
         private int BaseUpgradeCost { get; set; } = 75;
+        [SerializeField] private Camera StaticCamera;
         [SerializeField] private Transform IconsParent;
         [SerializeField] private Transform WindowsParent;
         [SerializeField] private Transform CollapsedWindowParent;
@@ -50,7 +50,8 @@ namespace TerminalDesktopMod
             transform.localPosition = Vector3.zero;
             
             TerminalBeganUsing += OnBeganUsing;
-            TerminalExited += OnExitedUsing;
+            TerminalExitEvent.AddListener(OnExitedUsing);
+            
             MaxEnergy.OnValueChanged += OnMaxEnergyValueChanged;
             DesktopStorage.TerminalNodeChangeEvent += DesktopStorageOnTerminalNodeChangeEvent;
             DesktopStorage.ComputerPowerUpgrade.itemCost = BaseUpgradeCost * MaxEnergy.Value;
@@ -61,9 +62,7 @@ namespace TerminalDesktopMod
 
             if (IsClient && !IsHost)
                 StartCoroutine(WaitInitPlayer());
-            
         }
-
         private void OnMaxEnergyValueChanged(int previousValue, int newValue)
         {
             DesktopStorage.ComputerPowerUpgrade.itemCost = BaseUpgradeCost * newValue;
@@ -98,7 +97,10 @@ namespace TerminalDesktopMod
             PowerText.text = $"{UseEnergy.Value} / {MaxEnergy.Value}";
             if (!IsUsingTerminal)
                 return;
-            EventUICamera.fieldOfView = GameNetworkManager.Instance.localPlayerController.gameplayCamera.fieldOfView;
+            var player = GameNetworkManager.Instance.localPlayerController;
+            player.isClimbingLadder = true;
+            if (!player.inTerminalMenu)
+                TerminalExitEvent.Invoke();
         }
         public void AddIcon(DesktopIconBase iconBasePrefab)
         {
@@ -141,45 +143,28 @@ namespace TerminalDesktopMod
         {
             MaxEnergy.Value = count;
         }
-        /// <summary>
-        /// Need for world space UI
-        /// </summary>
-        private void CreateEventCamera()
-        {
-            var player = GameNetworkManager.Instance.localPlayerController;
-            var eventUICameraObj = Instantiate(player.gameplayCamera.gameObject,
-                player.gameplayCamera.transform);
-            eventUICameraObj.transform.localPosition = Vector3.zero;
-            eventUICameraObj.transform.localRotation = Quaternion.Euler(0, 0, 0);
-            Destroy(eventUICameraObj.GetComponent<AudioListener>());
-            EventUICamera = eventUICameraObj.GetComponent<Camera>();
-            EventUICamera.targetTexture = null;
-            EventUICamera.depth = 10;
-            EventUICamera.clearFlags = CameraClearFlags.Depth;
-            eventUICameraObj.SetActive(false); // work event in disable state
-            CanvasDesktop.worldCamera = EventUICamera;
-            Terminal.playerScreenTexHighRes.width = EventUICamera.pixelWidth;
-            Terminal.playerScreenTexHighRes.height = EventUICamera.pixelHeight;
-        }
         private void OnBeganUsing(object sender, TerminalEventArgs e)
         {
-            if (EventUICamera is null)
-                CreateEventCamera();
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
-            var player = GameNetworkManager.Instance.localPlayerController;
-            player.isClimbingLadder = true; // free camera
-            player.ladderCameraHorizontal = 0; // set camera horizontal to center monitor
-            IsUsingTerminal = true;
-        }
 
-        private void OnExitedUsing(object sender, TerminalEventArgs e)
+            IsUsingTerminal = true;
+            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false)?.Disable();
+        }
+        private void OnExitedUsing()
         {
             IsUsingTerminal = false;
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
-            GameNetworkManager.Instance.localPlayerController.isClimbingLadder = false;
+            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false)?.Enable();
+        }
+        /// <summary>
+        /// actions if the terminal was closed, for example when disconnected
+        /// </summary>
+        private void ForceExitedTerminal()
+        {
+            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false)?.Enable();
         }
         public void CollapseWindow(DesktopWindowBase windowBase)
         {
@@ -324,10 +309,20 @@ namespace TerminalDesktopMod
         public override void OnDestroy()
         {
             TerminalBeganUsing -= OnBeganUsing;
-            TerminalExited -= OnExitedUsing;
             DesktopStorage.TerminalNodeChangeEvent -= DesktopStorageOnTerminalNodeChangeEvent;
+            WalkieWindow.ManagerDestroyed();
+            TerminalWindow.ManagerDestroyed();
+            ForceExitedTerminal();
         }
-        /*public void Reset()
+        [ServerRpc(RequireOwnership = false)]
+        public void ChangeObjectOwnerServerRpc(NetworkObjectReference netObjRef, ulong clientId)
+        {
+            if (!netObjRef.TryGet(out NetworkObject netObj))
+                return;
+            netObj.RemoveOwnership();
+            netObj.ChangeOwnership(clientId);
+        }
+        public void StartReset()
         {
             ResetServerRpc();
         }
@@ -340,6 +335,6 @@ namespace TerminalDesktopMod
         private void ResetClientRpc()
         {
             this.ResetDesktop();
-        }*/
+        }
     }
 }

@@ -17,7 +17,7 @@ namespace TerminalDesktopMod.Sync
 
         public bool SyncCustomInt;
         public int CustomInt;
-        
+
         public bool SyncCustomBool;
         public bool CustomBool;
         
@@ -26,7 +26,10 @@ namespace TerminalDesktopMod.Sync
         
         public bool SyncCustomString;
         public string CustomString;
-
+        
+        public bool SyncCustomRef;
+        public NetworkBehaviourReference CustomRef;
+        
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref ChangeCollapsed);
@@ -56,6 +59,10 @@ namespace TerminalDesktopMod.Sync
             serializer.SerializeValue(ref SyncCustomString);
             if (SyncCustomString)
                 serializer.SerializeValue(ref CustomString);
+            
+            serializer.SerializeValue(ref SyncCustomRef);
+            if (SyncCustomRef)
+                serializer.SerializeValue(ref CustomRef);
         }
     }
 }

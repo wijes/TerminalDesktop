@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using TerminalDesktopMod.Extentions;
 using Unity.Netcode;
 
 namespace TerminalDesktopMod
@@ -23,6 +24,9 @@ namespace TerminalDesktopMod
             if(!__instance.isHostingGame)
                 return;
             DesktopStorage.TerminalDesktopSaveModel = new TerminalDesktopSaveModel();
+            if (WalkieWindow.TerminalWalkieTalkie is null || WalkieWindow.TerminalWalkieTalkie.Equals(null))
+                return;
+            WalkieWindow.TerminalWalkieTalkie.gameObject.SetActive(false);
         }
         [HarmonyPatch("SaveGame")]
         [HarmonyPostfix]
@@ -31,12 +35,15 @@ namespace TerminalDesktopMod
             if(!__instance.isHostingGame)
                 return;
             TerminalDesktopManager.Instance.SaveDesktop();
+            if (WalkieWindow.TerminalWalkieTalkie is null || WalkieWindow.TerminalWalkieTalkie.Equals(null))
+                return;
+            WalkieWindow.TerminalWalkieTalkie.gameObject.SetActive(true);
         }
-        [HarmonyPrefix]
         [HarmonyPatch("ResetSavedGameValues")]
+        [HarmonyPrefix]
         private static void ResetSavedGameValues(GameNetworkManager __instance)
         {
-            TerminalDesktopManager.Instance.ResetDesktop();
+            TerminalDesktopManager.Instance.StartReset();
         }
     }
 }

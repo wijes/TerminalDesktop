@@ -46,6 +46,8 @@ namespace TerminalDesktopMod
         {
             base.CloseWindow();
             TerminalDesktopManager.Instance.ChangeUseEnergy(-1);
+            if (UseNightVision)
+                TerminalDesktopManager.Instance.ChangeUseEnergy(-1);
             CameraTexture.Release();
             Destroy(MapCamera.gameObject);
         }
@@ -128,6 +130,9 @@ namespace TerminalDesktopMod
 
             var cameraObj = Instantiate(BaseMapCamera, null);
             NightVisionVolume = cameraObj.GetComponentInChildren<Volume>();
+            
+            var baseNightLight = cameraObj.GetComponentInChildren<Light>();
+            baseNightLight.enabled = false;
             
             MapCamera = cameraObj.GetComponent<Camera>();
             MapCamera.nearClipPlane = -2.47f;

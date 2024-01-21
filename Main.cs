@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using BepInEx;
@@ -16,7 +17,7 @@ namespace TerminalDesktopMod
     {
         public const string ModGUID = "wijes.desktop.terminal";
         public const string ModName = "Terminal Desktop";
-        public const string ModVersion = "0.5.0";
+        public const string ModVersion = "0.6.0";
         internal static ManualLogSource Log;
         private readonly Harmony harmony = new Harmony(ModGUID);
 
@@ -24,7 +25,9 @@ namespace TerminalDesktopMod
         {
             Log = Logger;
             Logger.LogInfo($"Plugin Terminal Desktop is loading! v {ModVersion}");
-            var path = $"{Paths.PluginPath}/TerminalDesktop/terminaldesktop.bundle";
+            var path = $"{Paths.PluginPath}/wijes-TerminalDesktop-{ModVersion}/terminaldesktop.bundle";
+            if (!Directory.Exists($"{Paths.PluginPath}/wijes-TerminalDesktop-{ModVersion}"))
+                path = $"{Paths.PluginPath}/wijes-TerminalDesktop/terminaldesktop.bundle";
             AssetBundle assetBundle = AssetBundle.LoadFromFile(path);
             LoadFlashItem(assetBundle);
             
@@ -45,9 +48,8 @@ namespace TerminalDesktopMod
         {
             var flashItem = assetBundle.LoadAsset<Item>("FlashDrive");
             DesktopStorage.FlashDriveItem = flashItem;
-            Renderer rend = flashItem.spawnPrefab.GetComponent<Renderer> ();
+            Renderer rend = flashItem.spawnPrefab.GetComponent<Renderer>();
             var texture = assetBundle.LoadAsset<Texture2D>("FlashDriveAlbedo");
-                        
             rend.material = new Material(Shader.Find("HDRP/Lit"));
             rend.tag = "PhysicsProp";
             rend.material.mainTexture = texture;
